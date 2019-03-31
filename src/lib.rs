@@ -3,7 +3,11 @@ pub mod scanner;
 
 use std::io;
 use std::io::Write;
-use std::any::Any;
+use std::collections::HashMap;
+use token::token_type::TokenType;
+
+#[macro_use]
+extern crate lazy_static;
 
 pub fn run_prompt() {
     loop {
@@ -42,3 +46,80 @@ fn run(source: &str) -> Result<(), &'static str> {
 fn report(line: u32, source: &str, message: &str) {
     eprintln!("Line: {} Error: {} : {}", line, source.trim(), message);
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::scanner::Scanner;
+    use crate::token::token_type::TokenType;
+    use crate::token::Token;
+
+    #[test]
+    fn test_eof() {
+        let input = "";
+        let scanner = Scanner::new(input);
+        let tok = scanner.scan_tokens();
+        assert_eq!(tok[0], Token::new(TokenType::EOF, "", 1));
+    }
+
+    #[test]
+    fn test_single_char() {
+        let input = "=";
+        let scanner = Scanner::new(input);
+        let tok = scanner.scan_tokens();
+        assert_eq!(tok[0], Token::new(TokenType::EQUAL, "", 1));
+    }
+
+    #[test]
+    fn test_double_char() {
+        let input = "==";
+        let scanner = Scanner::new(input);
+        let tok = scanner.scan_tokens();
+        assert_eq!(tok[0], Token::new(TokenType::EqualEqual, "", 1));
+    }
+
+    #[test]
+    fn test_multi_char() {
+        let input = "= !=";
+        let scanner = Scanner::new(input);
+        let tok = scanner.scan_tokens();
+        assert_eq!(tok[0], Token::new(TokenType::EQUAL, "", 1));
+        assert_eq!(tok[1], Token::new(TokenType::BangEqual, "", 1));
+    }
+
+    #[test]
+    fn test_number() {
+        let input = "1";
+        let scanner = Scanner::new(input);
+        let tok = scanner.scan_tokens();
+        assert_eq!(tok[0], Token::new_number(1.0, 1));
+    }
+
+    #[test]
+    fn test_number_decimal() {
+        let input = "1.23";
+        let scanner = Scanner::new(input);
+        let tok = scanner.scan_tokens();
+        assert_eq!(tok[0], Token::new_number(1.23, 1));
+    }
+
+    #[test]
+    fn test_string() {
+        let input = "\"heya\"";
+        let scanner = Scanner::new(input);
+        let tok = scanner.scan_tokens();
+        assert_eq!(tok[0], Token::new_string("heya", 1));
+    }
+
+    #[test]
+    fn test_keyword() {
+        let input = "and or while";
+        let scanner = Scanner::new(input);
+        let tok = scanner.scan_tokens();
+        assert_eq!(tok[0], Token::new_keyword(TokenType::AND, 1));
+        assert_eq!(tok[1], Token::new_keyword(TokenType::OR, 1));
+        assert_eq!(tok[2], Token::new_keyword(TokenType::WHILE, 1));
+    }
+}
+
