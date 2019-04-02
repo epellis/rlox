@@ -1,18 +1,21 @@
 pub mod token_type;
 
-#[derive(Debug, PartialOrd, PartialEq)]
+#[derive(Debug, PartialOrd, PartialEq, Clone)]
 pub struct Token {
-    type_of: token_type::TokenType,
+    pub type_of: token_type::TokenType,
     lexeme: String,
-    literal: Object,
+    pub literal: Object,
     line: u32,
 }
 
-#[derive(Debug, PartialOrd, PartialEq)]
-enum Object {
+#[derive(Debug, PartialOrd, PartialEq, Clone)]
+pub enum Object {
     None,
     String(String),
     Number(f64),
+    True,
+    False,
+    Null,
 }
 
 impl Token {

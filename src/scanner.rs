@@ -1,6 +1,5 @@
 use crate::token::{Token, token_type::TokenType};
 use std::collections::HashMap;
-use std::hash::Hash;
 
 pub struct Scanner {
     source: String,
@@ -19,7 +18,7 @@ impl Scanner {
     pub fn scan_tokens(&self) -> Vec<Token> {
         let mut tokens = Vec::new();
         let mut line: u32 = 1;
-        let mut scan_error = false;
+//        let mut scan_error = false;
 
         let mut source: Vec<char> = self.source.chars().collect();
         source.reverse();
@@ -105,7 +104,7 @@ impl Scanner {
 
                 match KEYWORDS.get(&lexeme) {
                     Some(type_of) => {
-                        let type_of = type_of.clone();
+                        let type_of = *type_of;
                         return Some(Token::new_keyword(type_of, *line));
                     }
                     None => {
@@ -116,7 +115,7 @@ impl Scanner {
 
             // Couldn't Match
             _ => {
-                eprintln!("Unexpected character");
+                eprintln!("Unexpected character {}", c);
                 return None;
             }
         };

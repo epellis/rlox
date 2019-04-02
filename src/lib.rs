@@ -1,10 +1,12 @@
-pub mod token;
-pub mod scanner;
+mod token;
+mod scanner;
+mod expression;
+mod parser;
+
 
 use std::io;
 use std::io::Write;
-use std::collections::HashMap;
-use token::token_type::TokenType;
+use std::fs;
 
 #[macro_use]
 extern crate lazy_static;
@@ -25,14 +27,18 @@ pub fn run_prompt() {
 }
 
 pub fn run_file(path: &str) {
-    dbg!(path);
+    let mut line = String::new();
+    let contents = fs::read_to_string(path)
+        .expect("Couldn't open file!");
+
+    if let Err(why) = run(&contents) {
+        report(0, &line, why);
+    }
 }
 
 fn run(source: &str) -> Result<(), &'static str> {
     let scanner = scanner::Scanner::new(source.trim());
     let tokens = scanner.scan_tokens();
-
-//    dbg!(source);
 
     for token in tokens {
         println!("Token: {:?}", token);
