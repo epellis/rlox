@@ -13,8 +13,7 @@ pub enum Object {
     None,
     String(String),
     Number(f64),
-    True,
-    False,
+    Bool(bool),
     Nil,
 }
 
@@ -56,12 +55,12 @@ impl Token {
 impl std::fmt::Debug for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match &self.literal {
-            Object::None => write!(f, "Token({:?})", self.type_of),
-            Object::String(s) => write!(f, "Token('{}')", s),
-            Object::Number(n) => write!(f, "Token({})", n),
-            Object::True => write!(f, "Token(True)"),
-            Object::False => write!(f, "Token(False)"),
-            Object::Nil => write!(f, "Token(Nil)"),
+            Object::None => write!(f, "{:?}", self.type_of),
+            Object::String(s) => write!(f, "\"{}\"", s),
+            Object::Number(n) => write!(f, "{}", n),
+            Object::Bool(true) => write!(f, "true"),
+            Object::Bool(false) => write!(f, "false"),
+            Object::Nil => write!(f, "nil"),
         }
     }
 }

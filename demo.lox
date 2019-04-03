@@ -1,13 +1,13 @@
 // Let's say hello
-print "Hello World"
+print "Hello World";
 
 // Let's do some math
-var result = 1 + 2
-print result
+var result = 1 + 2;
+print result;
 
 // Lets make a function
 fun sayHello(me) {
-    print "Hello"
-    print me
+    print "Hello";
+    print me;
 }
-sayHello("Ned")
+sayHello("Ned");

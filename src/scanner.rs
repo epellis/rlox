@@ -224,6 +224,7 @@ lazy_static! {
         m.insert("super".to_string(), TokenType::Super);
         m.insert("this".to_string(), TokenType::This);
         m.insert("true".to_string(), TokenType::True);
+        m.insert("false".to_string(), TokenType::False);
         m.insert("var".to_string(), TokenType::Var);
         m.insert("while".to_string(), TokenType::While);
         m

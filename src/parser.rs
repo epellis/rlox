@@ -1,19 +1,18 @@
 use crate::token::{Token, Object};
 use crate::expression::Expr;
 use crate::token::token_type::TokenType;
-use crate::token::token_type::TokenType::EqualEqual;
 
-const EQUALITY_OPS: &'static [TokenType] = &[TokenType::Equal, TokenType::EqualEqual];
+const EQUALITY_OPS: &'static [TokenType] = &[TokenType::BangEqual, TokenType::EqualEqual];
 const COMPARISON_OPS: &'static [TokenType] = &[TokenType::Less, TokenType::LessEqual, TokenType::Greater, TokenType::GreaterEqual];
 const ADDITION_OPS: &'static [TokenType] = &[TokenType::Plus, TokenType::Minus];
 const MULTIPLICATION_OPS: &'static [TokenType] = &[TokenType::Star, TokenType::Slash];
+const SYNCHRONIZE_OPS: &'static [TokenType] = &[TokenType::Class, TokenType::Fun, TokenType::Var, TokenType::For, TokenType::If, TokenType::While, TokenType::Print, TokenType::Return];
 
 pub fn parse(tokens: &mut Vec<Token>) -> Expr {
     expression(tokens)
 }
 
 fn pop_token(tokens: &mut Vec<Token>) -> Token {
-    println!("Pop: Tokens: {:?}", tokens.clone());
     match tokens.pop() {
         Some(token) => token,
         None => Token::new_keyword(TokenType::Eof, 1)
@@ -21,25 +20,31 @@ fn pop_token(tokens: &mut Vec<Token>) -> Token {
 }
 
 fn peek_token(tokens: &mut Vec<Token>) -> Token {
-    println!("Peek: Tokens: {:?}", tokens.clone());
     match tokens.last() {
         Some(token) => token.clone(),
         None => Token::new_keyword(TokenType::Eof, 1)
     }
 }
 
+// If the parser encounters an error, skip to next statement
+fn synchronize(tokens: &mut Vec<Token>) {
+    let mut token = pop_token(tokens);
+    while token.type_of != TokenType::Semicolon || token.type_of != TokenType::Eof {
+        if SYNCHRONIZE_OPS.contains(&token.type_of) {
+            return;
+        }
+    }
+}
+
 fn expression(tokens: &mut Vec<Token>) -> Expr {
-    println!("Expression");
     equality(tokens)
 }
 
 fn equality(tokens: &mut Vec<Token>) -> Expr {
-    println!("Equality");
     let mut expr = comparison(tokens);
     let mut token = peek_token(tokens);
 
     while token.type_of != TokenType::Eof && EQUALITY_OPS.contains(&token.type_of) {
-        println!("Equality Loop");
         pop_token(tokens);
         let right = comparison(tokens);
         expr = Expr::Binary(Box::new(expr.clone()), token.clone(), Box::new(right));
@@ -50,12 +55,10 @@ fn equality(tokens: &mut Vec<Token>) -> Expr {
 }
 
 fn comparison(tokens: &mut Vec<Token>) -> Expr {
-    println!("Comparison");
     let mut expr = addition(tokens);
     let mut token = peek_token(tokens);
 
     while token.type_of != TokenType::Eof && COMPARISON_OPS.contains(&token.type_of) {
-        println!("Comparison Loop");
         pop_token(tokens);
         let right = addition(tokens);
         expr = Expr::Binary(Box::new(expr.clone()), token.clone(), Box::new(right));
@@ -66,12 +69,10 @@ fn comparison(tokens: &mut Vec<Token>) -> Expr {
 }
 
 fn addition(tokens: &mut Vec<Token>) -> Expr {
-    println!("Addition");
     let mut expr = multiplication(tokens);
     let mut token = peek_token(tokens);
 
     while token.type_of != TokenType::Eof && ADDITION_OPS.contains(&token.type_of) {
-        println!("Addition Loop");
         pop_token(tokens);
         let right = multiplication(tokens);
         expr = Expr::Binary(Box::new(expr.clone()), token.clone(), Box::new(right));
@@ -82,12 +83,10 @@ fn addition(tokens: &mut Vec<Token>) -> Expr {
 }
 
 fn multiplication(tokens: &mut Vec<Token>) -> Expr {
-    println!("Multiplication");
     let mut expr = unary(tokens);
     let mut token = peek_token(tokens);
 
     while token.type_of != TokenType::Eof && MULTIPLICATION_OPS.contains(&token.type_of) {
-        println!("Multiplication Loop");
         pop_token(tokens);
         let right = unary(tokens);
         expr = Expr::Binary(Box::new(expr.clone()), token.clone(), Box::new(right));
@@ -98,7 +97,6 @@ fn multiplication(tokens: &mut Vec<Token>) -> Expr {
 }
 
 fn unary(tokens: &mut Vec<Token>) -> Expr {
-    println!("Unary");
     let token = pop_token(tokens);
     match token.type_of {
         TokenType::Bang => Expr::Unary(token.clone(), Box::new(expression(tokens))),
@@ -111,7 +109,6 @@ fn unary(tokens: &mut Vec<Token>) -> Expr {
 }
 
 fn primary(tokens: &mut Vec<Token>) -> Expr {
-    println!("Primary");
     let token = pop_token(tokens);
     match token.type_of {
         TokenType::Number => Expr::Literal(token.literal),
@@ -128,13 +125,10 @@ fn primary(tokens: &mut Vec<Token>) -> Expr {
             }
             expr
         }
-        TokenType::Eof => {
-            println!("Encountered EOF Token");
-            Expr::None
-        }
+        TokenType::Eof => Expr::Empty,
         _ => {
             eprintln!("Couldn't Match! {:?}", token.type_of);
-            Expr::None
+            Expr::Empty
         }
     }
 }

@@ -2,7 +2,7 @@ mod token;
 mod scanner;
 mod expression;
 mod parser;
-
+mod interpreter;
 
 use std::io;
 use std::io::Write;
@@ -43,9 +43,13 @@ fn run(source: &str) -> Result<(), &'static str> {
     println!("Scanned Tokens: {:?}", tokens.clone());
 
     tokens.reverse();
-    let expressions = parser::parse(&mut tokens);
+    let expression = parser::parse(&mut tokens);
 
-    println!("Parsed Expression: {:?}", expressions.clone());
+    println!("Parsed Expression: {:?}", expression.clone());
+
+    let result = interpreter::interpret(expression);
+
+    println!("Result: {:?}", result);
 
     Ok(())
 //    Err("Your program sucks ;)")
