@@ -38,11 +38,14 @@ pub fn run_file(path: &str) {
 
 fn run(source: &str) -> Result<(), &'static str> {
     let scanner = scanner::Scanner::new(source.trim());
-    let tokens = scanner.scan_tokens();
+    let mut tokens = scanner.scan_tokens();
 
-    for token in tokens {
-        println!("Token: {:?}", token);
-    }
+    println!("Scanned Tokens: {:?}", tokens.clone());
+
+    tokens.reverse();
+    let expressions = parser::parse(&mut tokens);
+
+    println!("Parsed Expression: {:?}", expressions.clone());
 
     Ok(())
 //    Err("Your program sucks ;)")
@@ -66,7 +69,7 @@ mod tests {
         let input = "";
         let scanner = Scanner::new(input);
         let tok = scanner.scan_tokens();
-        assert_eq!(tok[0], Token::new(TokenType::EOF, "", 1));
+        assert_eq!(tok[0], Token::new(TokenType::Eof, "", 1));
     }
 
     #[test]
@@ -74,7 +77,7 @@ mod tests {
         let input = "=";
         let scanner = Scanner::new(input);
         let tok = scanner.scan_tokens();
-        assert_eq!(tok[0], Token::new(TokenType::EQUAL, "", 1));
+        assert_eq!(tok[0], Token::new(TokenType::Equal, "", 1));
     }
 
     #[test]
@@ -90,7 +93,7 @@ mod tests {
         let input = "= !=";
         let scanner = Scanner::new(input);
         let tok = scanner.scan_tokens();
-        assert_eq!(tok[0], Token::new(TokenType::EQUAL, "", 1));
+        assert_eq!(tok[0], Token::new(TokenType::Equal, "", 1));
         assert_eq!(tok[1], Token::new(TokenType::BangEqual, "", 1));
     }
 
@@ -123,9 +126,9 @@ mod tests {
         let input = "and or while";
         let scanner = Scanner::new(input);
         let tok = scanner.scan_tokens();
-        assert_eq!(tok[0], Token::new_keyword(TokenType::AND, 1));
-        assert_eq!(tok[1], Token::new_keyword(TokenType::OR, 1));
-        assert_eq!(tok[2], Token::new_keyword(TokenType::WHILE, 1));
+        assert_eq!(tok[0], Token::new_keyword(TokenType::And, 1));
+        assert_eq!(tok[1], Token::new_keyword(TokenType::Or, 1));
+        assert_eq!(tok[2], Token::new_keyword(TokenType::While, 1));
     }
 }
 

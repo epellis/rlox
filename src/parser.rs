@@ -1,167 +1,140 @@
 use crate::token::{Token, Object};
-use crate::expression::*;
+use crate::expression::Expr;
 use crate::token::token_type::TokenType;
-use std::cell::RefCell;
-use std::rc::Rc;
+use crate::token::token_type::TokenType::EqualEqual;
 
-struct Parser {
-    tokens: Vec<Token>,
-    previous: Option<Token>,
+const EQUALITY_OPS: &'static [TokenType] = &[TokenType::Equal, TokenType::EqualEqual];
+const COMPARISON_OPS: &'static [TokenType] = &[TokenType::Less, TokenType::LessEqual, TokenType::Greater, TokenType::GreaterEqual];
+const ADDITION_OPS: &'static [TokenType] = &[TokenType::Plus, TokenType::Minus];
+const MULTIPLICATION_OPS: &'static [TokenType] = &[TokenType::Star, TokenType::Slash];
+
+pub fn parse(tokens: &mut Vec<Token>) -> Expr {
+    expression(tokens)
 }
 
-impl Parser {
-    pub fn new(tokens: &[Token]) -> Parser {
-        let mut tokens = tokens.to_vec();
-        tokens.reverse();
-        Parser { tokens, previous: None }
+fn pop_token(tokens: &mut Vec<Token>) -> Token {
+    println!("Pop: Tokens: {:?}", tokens.clone());
+    match tokens.pop() {
+        Some(token) => token,
+        None => Token::new_keyword(TokenType::Eof, 1)
+    }
+}
+
+fn peek_token(tokens: &mut Vec<Token>) -> Token {
+    println!("Peek: Tokens: {:?}", tokens.clone());
+    match tokens.last() {
+        Some(token) => token.clone(),
+        None => Token::new_keyword(TokenType::Eof, 1)
+    }
+}
+
+fn expression(tokens: &mut Vec<Token>) -> Expr {
+    println!("Expression");
+    equality(tokens)
+}
+
+fn equality(tokens: &mut Vec<Token>) -> Expr {
+    println!("Equality");
+    let mut expr = comparison(tokens);
+    let mut token = peek_token(tokens);
+
+    while token.type_of != TokenType::Eof && EQUALITY_OPS.contains(&token.type_of) {
+        println!("Equality Loop");
+        pop_token(tokens);
+        let right = comparison(tokens);
+        expr = Expr::Binary(Box::new(expr.clone()), token.clone(), Box::new(right));
+        token = peek_token(tokens);
     }
 
-    pub fn match_type(&mut self, types: &[TokenType]) -> bool {
-        if let Some(tok) = self.peek() {
-            if types.contains(&tok.type_of) {
-                self.advance();
-                return true;
+    expr
+}
+
+fn comparison(tokens: &mut Vec<Token>) -> Expr {
+    println!("Comparison");
+    let mut expr = addition(tokens);
+    let mut token = peek_token(tokens);
+
+    while token.type_of != TokenType::Eof && COMPARISON_OPS.contains(&token.type_of) {
+        println!("Comparison Loop");
+        pop_token(tokens);
+        let right = addition(tokens);
+        expr = Expr::Binary(Box::new(expr.clone()), token.clone(), Box::new(right));
+        token = peek_token(tokens);
+    }
+
+    expr
+}
+
+fn addition(tokens: &mut Vec<Token>) -> Expr {
+    println!("Addition");
+    let mut expr = multiplication(tokens);
+    let mut token = peek_token(tokens);
+
+    while token.type_of != TokenType::Eof && ADDITION_OPS.contains(&token.type_of) {
+        println!("Addition Loop");
+        pop_token(tokens);
+        let right = multiplication(tokens);
+        expr = Expr::Binary(Box::new(expr.clone()), token.clone(), Box::new(right));
+        token = peek_token(tokens);
+    }
+
+    expr
+}
+
+fn multiplication(tokens: &mut Vec<Token>) -> Expr {
+    println!("Multiplication");
+    let mut expr = unary(tokens);
+    let mut token = peek_token(tokens);
+
+    while token.type_of != TokenType::Eof && MULTIPLICATION_OPS.contains(&token.type_of) {
+        println!("Multiplication Loop");
+        pop_token(tokens);
+        let right = unary(tokens);
+        expr = Expr::Binary(Box::new(expr.clone()), token.clone(), Box::new(right));
+        token = peek_token(tokens);
+    }
+
+    expr
+}
+
+fn unary(tokens: &mut Vec<Token>) -> Expr {
+    println!("Unary");
+    let token = pop_token(tokens);
+    match token.type_of {
+        TokenType::Bang => Expr::Unary(token.clone(), Box::new(expression(tokens))),
+        TokenType::Minus => Expr::Unary(token.clone(), Box::new(expression(tokens))),
+        _ => {
+            tokens.push(token);
+            primary(tokens)
+        }
+    }
+}
+
+fn primary(tokens: &mut Vec<Token>) -> Expr {
+    println!("Primary");
+    let token = pop_token(tokens);
+    match token.type_of {
+        TokenType::Number => Expr::Literal(token.literal),
+        TokenType::String => Expr::Literal(token.literal),
+        TokenType::False => Expr::Literal(token.literal),
+        TokenType::True => Expr::Literal(token.literal),
+        TokenType::Nil => Expr::Literal(token.literal),
+        TokenType::LeftParen => {
+            let expr = Expr::Grouping(Box::new(expression(tokens)));
+            match &tokens.pop() {
+                Some(token) if token.type_of == TokenType::RightParen => (),
+                Some(token) => eprintln!("Expected ')', Got: {:?}", token.clone()),
+                None => panic!("Couldn't find ')' for Grouping"),
             }
+            expr
         }
-        false
-    }
-
-    fn advance(&mut self) {
-        self.previous = self.tokens.pop();
-    }
-
-    fn consume_until(&mut self, type_of: TokenType) {
-
-    }
-
-    fn check(&self, type_of: TokenType) -> bool {
-        if self.is_end() {
-            return false;
+        TokenType::Eof => {
+            println!("Encountered EOF Token");
+            Expr::None
         }
-        match self.peek() {
-            Some(tok) if tok.type_of == type_of => true,
-            _ => false,
+        _ => {
+            eprintln!("Couldn't Match! {:?}", token.type_of);
+            Expr::None
         }
     }
-
-    fn is_end(&self) -> bool {
-        match self.peek() {
-            Some(tok) => tok.type_of == TokenType::EOF,
-            None => true,
-        }
-    }
-
-    fn peek(&self) -> Option<&Token> {
-        match self.tokens.is_empty() {
-            true => None,
-            false => Some(&self.tokens[0]),
-        }
-    }
-
-    fn previous(&self) -> Token {
-        match &self.previous {
-            Some(tok) => tok.clone(),
-            None => panic!("Previous called on a full list"),
-        }
-    }
-}
-
-fn expression(parser: &mut Parser) -> Expr {
-    equality(parser)
-}
-
-fn equality(parser: &mut Parser) -> Expr {
-    let mut expr = comparison(parser);
-    let mut operator = parser.previous();
-    let mut right: Expr = Rc::new(RefCell::new(Literal { value: Object::None }));
-
-    while parser.match_type(&[TokenType::EqualEqual, TokenType::BangEqual]) {
-        operator = parser.previous();
-        right = equality(parser);
-    }
-
-    let expr = Binary { left: expr, operator, right };
-    Rc::new(RefCell::new(expr))
-}
-
-fn comparison(parser: &mut Parser) -> Expr {
-    let types = [TokenType::GREATER, TokenType::GreaterEqual, TokenType::LESS, TokenType::LessEqual];
-    let expr = addition(parser);
-    let mut operator = parser.previous();
-    let mut right: Expr = Rc::new(RefCell::new(Literal { value: Object::None }));
-
-    while parser.match_type(&types) {
-        operator = parser.previous();
-        right = addition(parser)
-    }
-
-    let expr = Binary { left: expr, operator, right };
-    Rc::new(RefCell::new(expr))
-}
-
-fn addition(parser: &mut Parser) -> Expr {
-    let expr = multiplication(parser);
-    let mut operator = parser.previous();
-    let mut right: Expr = Rc::new(RefCell::new(Literal { value: Object::None }));
-
-    while parser.match_type(&[TokenType::MINUS, TokenType::PLUS]) {
-        operator = parser.previous();
-        right = multiplication(parser)
-    }
-
-    let expr = Binary { left: expr, operator, right };
-    Rc::new(RefCell::new(expr))
-}
-
-fn multiplication(parser: &mut Parser) -> Expr {
-    let expr = unary(parser);
-    let mut operator = parser.previous();
-    let mut right: Expr = Rc::new(RefCell::new(Literal { value: Object::None }));
-
-    while parser.match_type(&[TokenType::SLASH, TokenType::STAR]) {
-        operator = parser.previous();
-        right = unary(parser)
-    }
-
-    let expr = Binary { left: expr, operator, right };
-    Rc::new(RefCell::new(expr))
-}
-
-fn unary(parser: &mut Parser) -> Expr {
-    if parser.match_type(&[TokenType::BANG, TokenType::MINUS]) {
-        let operator = parser.previous();
-        let right = unary(parser);
-        let expr = Unary { operator, right };
-        return Rc::new(RefCell::new(expr));
-    }
-
-    primary(parser)
-}
-
-fn primary(parser: &mut Parser) -> Expr {
-    if parser.match_type(&[TokenType::FALSE]) {
-        let expr = Literal { value: Object::False };
-        return Rc::new(RefCell::new(expr));
-    } else if parser.match_type(&[TokenType::TRUE]) {
-        let expr = Literal { value: Object::True };
-        return Rc::new(RefCell::new(expr));
-    } else if parser.match_type(&[TokenType::NIL]) {
-        let expr = Literal { value: Object::Null };
-        return Rc::new(RefCell::new(expr));
-    }
-
-    if parser.match_type(&[TokenType::NUMBER, TokenType::STRING]) {
-        let tok = parser.previous();
-        let expr = Literal { value: tok.literal };
-        return Rc::new(RefCell::new(expr));
-    }
-
-    if parser.match_type(&[TokenType::LeftParen]) {
-        let expr = expression(parser);
-        parser.consume_until(TokenType::RightParen);
-//        return Rc::new(RefCell::new(expr));
-        return expr;
-    }
-
-    panic!("Could not match any types!");
 }

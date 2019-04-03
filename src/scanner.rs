@@ -29,7 +29,7 @@ impl Scanner {
             }
         }
 
-        tokens.push(Token::new(TokenType::EOF, "", line));
+        tokens.push(Token::new(TokenType::Eof, "", line));
 
         tokens
     }
@@ -48,20 +48,20 @@ impl Scanner {
             ')' => Some(TokenType::RightParen),
             '{' => Some(TokenType::RightBrace),
             '}' => Some(TokenType::LeftBrace),
-            ',' => Some(TokenType::COMMA),
-            '.' => Some(TokenType::DOT),
-            '-' => Some(TokenType::MINUS),
-            '+' => Some(TokenType::PLUS),
-            ';' => Some(TokenType::SEMICOLON),
-            '*' => Some(TokenType::STAR),
+            ',' => Some(TokenType::Comma),
+            '.' => Some(TokenType::Dot),
+            '-' => Some(TokenType::Minus),
+            '+' => Some(TokenType::Plus),
+            ';' => Some(TokenType::Semicolon),
+            '*' => Some(TokenType::Star),
             '!' if next_c == '=' => Some(TokenType::BangEqual),
-            '!' => Some(TokenType::BANG),
+            '!' => Some(TokenType::Bang),
             '=' if next_c == '=' => Some(TokenType::EqualEqual),
-            '=' => Some(TokenType::EQUAL),
+            '=' => Some(TokenType::Equal),
             '<' if next_c == '=' => Some(TokenType::LessEqual),
-            '<' => Some(TokenType::LESS),
+            '<' => Some(TokenType::Less),
             '>' if next_c == '=' => Some(TokenType::GreaterEqual),
-            '>' => Some(TokenType::GREATER),
+            '>' => Some(TokenType::Greater),
 
             // Inline and Block Comment
             '/' if next_c == '/' => {
@@ -73,7 +73,7 @@ impl Scanner {
                 return None;
             }
 
-            '/' => Some(TokenType::SLASH),
+            '/' => Some(TokenType::Slash),
 
             // Whitespace
             ' ' => None,
@@ -211,21 +211,21 @@ fn eat_identifier(source: &mut Vec<char>) -> String {
 lazy_static! {
     static ref KEYWORDS: HashMap<String, TokenType> = {
         let mut m = HashMap::new();
-        m.insert("and".to_string(), TokenType::AND);
-        m.insert("class".to_string(), TokenType::CLASS);
-        m.insert("else".to_string(), TokenType::ELSE);
-        m.insert("for".to_string(), TokenType::FOR);
-        m.insert("fun".to_string(), TokenType::FUN);
-        m.insert("if".to_string(), TokenType::IF);
-        m.insert("nil".to_string(), TokenType::NIL);
-        m.insert("or".to_string(), TokenType::OR);
-        m.insert("print".to_string(), TokenType::PRINT);
-        m.insert("return".to_string(), TokenType::RETURN);
-        m.insert("super".to_string(), TokenType::SUPER);
-        m.insert("this".to_string(), TokenType::THIS);
-        m.insert("true".to_string(), TokenType::TRUE);
-        m.insert("var".to_string(), TokenType::VAR);
-        m.insert("while".to_string(), TokenType::WHILE);
+        m.insert("and".to_string(), TokenType::And);
+        m.insert("class".to_string(), TokenType::Class);
+        m.insert("else".to_string(), TokenType::Else);
+        m.insert("for".to_string(), TokenType::For);
+        m.insert("fun".to_string(), TokenType::Fun);
+        m.insert("if".to_string(), TokenType::If);
+        m.insert("nil".to_string(), TokenType::Nil);
+        m.insert("or".to_string(), TokenType::Or);
+        m.insert("print".to_string(), TokenType::Print);
+        m.insert("return".to_string(), TokenType::Return);
+        m.insert("super".to_string(), TokenType::Super);
+        m.insert("this".to_string(), TokenType::This);
+        m.insert("true".to_string(), TokenType::True);
+        m.insert("var".to_string(), TokenType::Var);
+        m.insert("while".to_string(), TokenType::While);
         m
     };
 }
