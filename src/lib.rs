@@ -1,6 +1,7 @@
 mod token;
 mod scanner;
 mod expression;
+mod statement;
 mod parser;
 mod interpreter;
 
@@ -43,16 +44,11 @@ fn run(source: &str) -> Result<(), &'static str> {
     println!("Scanned Tokens: {:?}", tokens.clone());
 
     tokens.reverse();
-    let expression = parser::parse(&mut tokens);
+    let expressions = parser::parse(&mut tokens);
 
-    println!("Parsed Expression: {:?}", expression.clone());
+    println!("Parsed Expression: {:?}", expressions.clone());
 
-    let result = interpreter::interpret(expression);
-
-    println!("Result: {:?}", result);
-
-    Ok(())
-//    Err("Your program sucks ;)")
+    interpreter::interpret(expressions)
 }
 
 // TODO: Make into a macro?
@@ -134,5 +130,5 @@ mod tests {
         assert_eq!(tok[1], Token::new_keyword(TokenType::Or, 1));
         assert_eq!(tok[2], Token::new_keyword(TokenType::While, 1));
     }
-}
 
+}

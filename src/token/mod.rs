@@ -8,7 +8,7 @@ pub struct Token {
     line: u32,
 }
 
-#[derive(Debug, PartialOrd, PartialEq, Clone)]
+#[derive(PartialOrd, PartialEq, Clone)]
 pub enum Object {
     None,
     String(String),
@@ -55,7 +55,21 @@ impl Token {
 impl std::fmt::Debug for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match &self.literal {
-            Object::None => write!(f, "{:?}", self.type_of),
+            Object::None if self.lexeme != "" => write!(f, "{}", self.lexeme),
+            Object::None => write!(f, "Token::{:?}", self.type_of),
+            Object::String(s) => write!(f, "\"{}\"", s),
+            Object::Number(n) => write!(f, "{}", n),
+            Object::Bool(true) => write!(f, "true"),
+            Object::Bool(false) => write!(f, "false"),
+            Object::Nil => write!(f, "nil"),
+        }
+    }
+}
+
+impl std::fmt::Debug for Object {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match &self {
+            Object::None => write!(f, "None"),
             Object::String(s) => write!(f, "\"{}\"", s),
             Object::Number(n) => write!(f, "{}", n),
             Object::Bool(true) => write!(f, "true"),

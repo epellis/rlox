@@ -1,18 +1,27 @@
 use crate::token::{Token, Object};
 use crate::expression::Expr;
 use crate::token::token_type::TokenType;
+use crate::statement::Stmt;
 
 const EQUALITY_OPS: &'static [TokenType] = &[TokenType::BangEqual, TokenType::EqualEqual];
 const COMPARISON_OPS: &'static [TokenType] = &[TokenType::Less, TokenType::LessEqual, TokenType::Greater, TokenType::GreaterEqual];
 const ADDITION_OPS: &'static [TokenType] = &[TokenType::Plus, TokenType::Minus];
 const MULTIPLICATION_OPS: &'static [TokenType] = &[TokenType::Star, TokenType::Slash];
 const SYNCHRONIZE_OPS: &'static [TokenType] = &[TokenType::Class, TokenType::Fun, TokenType::Var, TokenType::For, TokenType::If, TokenType::While, TokenType::Print, TokenType::Return];
+//const PRINT_OPS: &'static [TokenType] = &[TokenType::Print];
 
-pub fn parse(tokens: &mut Vec<Token>) -> Expr {
-    expression(tokens)
+pub fn parse(tokens: &mut Vec<Token>) -> Vec<Stmt> {
+    let mut statements = Vec::new();
+    while peek_token(tokens).type_of != TokenType::Eof {
+//        let expr = Box::new(expression(tokens));
+//        statements.push(Stmt::Expr(expr));
+        statements.push(statement(tokens));
+    }
+    statements
 }
 
 fn pop_token(tokens: &mut Vec<Token>) -> Token {
+    // TODO: Refactor with .unwrap_or()
     match tokens.pop() {
         Some(token) => token,
         None => Token::new_keyword(TokenType::Eof, 1)
@@ -20,6 +29,7 @@ fn pop_token(tokens: &mut Vec<Token>) -> Token {
 }
 
 fn peek_token(tokens: &mut Vec<Token>) -> Token {
+    // TODO: Refactor with .unwrap_or()
     match tokens.last() {
         Some(token) => token.clone(),
         None => Token::new_keyword(TokenType::Eof, 1)
@@ -34,6 +44,36 @@ fn synchronize(tokens: &mut Vec<Token>) {
             return;
         }
     }
+}
+
+fn statement(tokens: &mut Vec<Token>) -> Stmt {
+    let token = peek_token(tokens);
+
+    match token.type_of {
+        TokenType::Print => {
+            pop_token(tokens);
+            print_statement(tokens)
+        }
+        _ => expression_statement(tokens)
+    }
+}
+
+fn print_statement(tokens: &mut Vec<Token>) -> Stmt {
+    let expr = expression(tokens);
+    match pop_token(tokens).type_of {
+        TokenType::Semicolon => (),
+        _ => eprintln!("Warning! Expected ';'"),
+    }
+    Stmt::Print(Box::new(expr))
+}
+
+fn expression_statement(tokens: &mut Vec<Token>) -> Stmt {
+    let expr = expression(tokens);
+    match pop_token(tokens).type_of {
+        TokenType::Semicolon => (),
+        _ => eprintln!("Warning! Expected ';'"),
+    }
+    Stmt::Expr(Box::new(expr))
 }
 
 fn expression(tokens: &mut Vec<Token>) -> Expr {

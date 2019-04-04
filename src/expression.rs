@@ -15,7 +15,7 @@ impl std::fmt::Debug for Expr {
             Expr::Binary(left, token, right) => {
                 write!(f, "({:?} {:?} {:?})", token, left, right)
             },
-            Expr::Literal(object) => write!(f, "({:?})", object),
+            Expr::Literal(object) => write!(f, "{:?}", object),
             Expr::Unary(token, expr) => write!(f, "({:?} {:?})", token, expr),
             Expr::Grouping(expr) => write!(f, "({:?})", expr),
             Expr::Empty => write!(f, "()"),
