@@ -40,12 +40,9 @@ pub fn run_file(path: &str) {
 fn run(source: &str) -> Result<(), &'static str> {
     let scanner = scanner::Scanner::new(source.trim());
     let mut tokens = scanner.scan_tokens();
-
     println!("Scanned Tokens: {:?}", tokens.clone());
 
-    tokens.reverse();
     let expressions = parser::parse(&mut tokens);
-
     println!("Parsed Expression: {:?}", expressions.clone());
 
     interpreter::interpret(expressions)
@@ -63,6 +60,8 @@ mod tests {
     use crate::scanner::Scanner;
     use crate::token::token_type::TokenType;
     use crate::token::Token;
+    use crate::parser::*;
+    use crate::interpreter::*;
 
     #[test]
     fn test_eof() {
@@ -130,5 +129,4 @@ mod tests {
         assert_eq!(tok[1], Token::new_keyword(TokenType::Or, 1));
         assert_eq!(tok[2], Token::new_keyword(TokenType::While, 1));
     }
-
 }
