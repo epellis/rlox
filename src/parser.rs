@@ -2,7 +2,7 @@ use crate::token::{Token, Object};
 use crate::expression::Expr;
 use crate::token::token_type::TokenType;
 use crate::statement::Stmt;
-use crate::token::token_type::TokenType::EqualEqual;
+use crate::token::token_type::TokenType::{EqualEqual, Identifier};
 
 const EQUALITY_OPS: &'static [TokenType] = &[TokenType::BangEqual, TokenType::EqualEqual];
 const COMPARISON_OPS: &'static [TokenType] = &[TokenType::Less, TokenType::LessEqual, TokenType::Greater, TokenType::GreaterEqual];
@@ -10,15 +10,6 @@ const ADDITION_OPS: &'static [TokenType] = &[TokenType::Plus, TokenType::Minus];
 const MULTIPLICATION_OPS: &'static [TokenType] = &[TokenType::Star, TokenType::Slash];
 const UNARY_OPS: &'static [TokenType] = &[TokenType::Bang, TokenType::Minus];
 const PRINT_OPS: &'static [TokenType] = &[TokenType::Print];
-
-pub fn parse(tokens: &mut Vec<Token>) -> Vec<Stmt> {
-    let mut statements = Vec::new();
-    tokens.reverse();   // Treat like a stack
-    while peek_token(tokens).type_of != TokenType::Eof {
-        statements.push(statement(tokens));
-    }
-    statements
-}
 
 fn peek_token(tokens: &mut Vec<Token>) -> Token {
     tokens.last()
@@ -53,6 +44,42 @@ fn consume_until_found(tokens: &mut Vec<Token>, family: &[TokenType]) -> bool {
     }
 }
 
+pub fn parse(tokens: &mut Vec<Token>) -> Vec<Stmt> {
+    let mut statements = Vec::new();
+    tokens.reverse();   // Treat like a stack
+    while peek_token(tokens).type_of != TokenType::Eof {
+        statements.push(declaration(tokens));
+    }
+    statements
+}
+
+fn declaration(tokens: &mut Vec<Token>) -> Stmt {
+    if consume_match(tokens, &[TokenType::Var]) {
+        var_declaration(tokens)
+    } else {
+        statement(tokens)
+    }
+    // TODO: Synchronize
+}
+
+fn var_declaration(tokens: &mut Vec<Token>) -> Stmt {
+    let name = pop_token(tokens);
+    if name.type_of != TokenType::Identifier {
+        panic!("Expected identifier");
+    }
+
+    let initializer = if consume_match(tokens, &[TokenType::Equal]) {
+        expression(tokens)
+    } else {
+        Expr::Empty
+    };
+
+    if !consume_until_found(tokens, &[TokenType::Semicolon]) {
+        eprintln!("Did not find ';' at end of statement");
+    }
+    Stmt::Var(name, Box::new(initializer))
+}
+
 fn statement(tokens: &mut Vec<Token>) -> Stmt {
     let stmt = if consume_match(tokens, PRINT_OPS) {
         let expr = expression(tokens);
@@ -69,7 +96,24 @@ fn statement(tokens: &mut Vec<Token>) -> Stmt {
 }
 
 fn expression(tokens: &mut Vec<Token>) -> Expr {
-    equality(tokens)
+    assignment(tokens)
+}
+
+fn assignment(tokens: &mut Vec<Token>) -> Expr {
+    let expr = equality(tokens);
+    let mut token = peek_token(tokens);
+
+    if consume_match(tokens, &[TokenType::Equal]) {
+        let value = assignment(tokens);
+        // Todo: Figure out if we have an l-value or an r-value
+        //  Token name = ((Expr.Variable)expr).name;
+        if let Expr::Variable(token) = &value {
+            return Expr::Assign(token.clone(), Box::new(value.clone()));
+        } else {
+            panic!("Invalid assignment target");
+        }
+    }
+    expr
 }
 
 fn equality(tokens: &mut Vec<Token>) -> Expr {
@@ -139,8 +183,8 @@ fn primary(tokens: &mut Vec<Token>) -> Expr {
     match token.type_of {
         TokenType::Number => Expr::Literal(token.literal),
         TokenType::String => Expr::Literal(token.literal),
-        TokenType::False => Expr::Literal(token.literal),
-        TokenType::True => Expr::Literal(token.literal),
+        TokenType::False => Expr::Literal(Object::Bool(false)),
+        TokenType::True => Expr::Literal(Object::Bool(true)),
         TokenType::Nil => Expr::Literal(token.literal),
         TokenType::LeftParen => {
             let expr = Expr::Grouping(Box::new(expression(tokens)));
@@ -149,6 +193,7 @@ fn primary(tokens: &mut Vec<Token>) -> Expr {
             }
             expr
         }
+        TokenType::Identifier => Expr::Variable(token),
         TokenType::Eof => Expr::Empty,
         _ => {
             eprintln!("Couldn't Match! {:?}", token.type_of);

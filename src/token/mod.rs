@@ -3,7 +3,7 @@ pub mod token_type;
 #[derive(PartialOrd, PartialEq, Clone)]
 pub struct Token {
     pub type_of: token_type::TokenType,
-    lexeme: String,
+    pub lexeme: String,
     pub literal: Object,
     line: u32,
 }

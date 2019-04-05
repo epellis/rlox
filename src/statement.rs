@@ -5,4 +5,5 @@ use crate::expression::Expr;
 pub enum Stmt {
     Expr(Box<Expr>),
     Print(Box<Expr>),
+    Var(Token, Box<Expr>)
 }
