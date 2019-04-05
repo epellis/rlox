@@ -5,7 +5,7 @@ use crate::token::token_type::TokenType;
 use crate::environment::Environment;
 
 pub fn interpret(statements: Vec<Stmt>) -> Result<(), &'static str> {
-    let mut environment = Environment::new();
+    let mut environment = Environment::new_root();
     for statement in statements {
         if let Err(why) = execute(statement, &mut environment) {
             return Err(why);

@@ -1,27 +1,54 @@
 use crate::token::Object;
 use std::collections::HashMap;
+use std::cell::RefCell;
+use std::rc::Rc;
 
+type Enclosure = Rc<RefCell<HashMap<String, Object>>>;
+
+#[derive(Debug, Clone)]
 pub struct Environment {
-    values: HashMap<String, Object>,
+    values: Enclosure,
+    pub enclosure_stack: Vec<Enclosure>,
 }
 
 impl Environment {
-    pub fn new() -> Environment {
-        Environment { values: HashMap::new() }
+    pub fn new_root() -> Environment {
+        let values = Rc::new(RefCell::new(HashMap::new()));
+        let mut enclosure_stack = Vec::new();
+        enclosure_stack.push(values.clone());
+        Environment { enclosure_stack, values }
     }
 
-    pub fn define(&mut self, name: String, value: Object) {
-        self.values.insert(name, value);
+    pub fn new_child(parent: &Environment) -> Environment {
+        let values = Rc::new(RefCell::new(HashMap::new()));
+        let mut enclosure_stack = parent.enclosure_stack.clone();
+        enclosure_stack.push(values.clone());
+        Environment { enclosure_stack, values }
+    }
+
+    pub fn define(&self, name: String, value: Object) {
+        let mut enclosure = self.values.borrow_mut();
+        enclosure.insert(name, value);
     }
 
     pub fn get(&self, name: String) -> Object {
-        self.values.get(&name).expect("Undefined Variable").clone()
+        for enclosure in self.enclosure_stack.iter().rev() {
+            let enclosure = enclosure.borrow();
+            if let Some(object) = enclosure.get(&name) {
+                return object.clone();
+            }
+        }
+        panic!("Get: Undefined Variable!");
     }
 
-    pub fn assign(&mut self, name: String, value: Object) {
-//        if self.values.insert(name, value).is_none() {
-//            panic!("Undefined variable");
-//        }
-        self.values.insert(name, value).expect("Undefined Variable");
+    pub fn assign(&self, name: String, object: Object) {
+        for enclosure in self.enclosure_stack.iter().rev() {
+            let mut enclosure = enclosure.borrow_mut();
+            if enclosure.contains_key(&name) {
+                enclosure.insert(name, object);
+                return;
+            }
+        }
+        panic!("Assign: Undefined Variable!");
     }
 }

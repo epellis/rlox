@@ -1,0 +1,11 @@
+// Here is a global scope
+var a = 3;
+print a;
+
+// Here is a local scope
+{
+    var b = 4;
+    print b;
+
+    print a;
+}

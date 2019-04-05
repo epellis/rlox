@@ -105,8 +105,10 @@ fn assignment(tokens: &mut Vec<Token>) -> Expr {
 
     if consume_match(tokens, &[TokenType::Equal]) {
         let value = assignment(tokens);
-        // Todo: Figure out if we have an l-value or an r-value
-        //  Token name = ((Expr.Variable)expr).name;
+
+        // TODO: The left always needs to be an l-value. If the left is an
+        //  r-value, then it needs to be converted for assignment to work.
+
         if let Expr::Variable(token) = &value {
             return Expr::Assign(token.clone(), Box::new(value.clone()));
         } else {
