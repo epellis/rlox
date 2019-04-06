@@ -46,8 +46,8 @@ impl Scanner {
         let token_type = match c {
             '(' => Some(TokenType::LeftParen),
             ')' => Some(TokenType::RightParen),
-            '{' => Some(TokenType::RightBrace),
-            '}' => Some(TokenType::LeftBrace),
+            '{' => Some(TokenType::LeftBrace),
+            '}' => Some(TokenType::RightBrace),
             ',' => Some(TokenType::Comma),
             '.' => Some(TokenType::Dot),
             '-' => Some(TokenType::Minus),

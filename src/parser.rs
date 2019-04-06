@@ -9,7 +9,6 @@ const COMPARISON_OPS: &'static [TokenType] = &[TokenType::Less, TokenType::LessE
 const ADDITION_OPS: &'static [TokenType] = &[TokenType::Plus, TokenType::Minus];
 const MULTIPLICATION_OPS: &'static [TokenType] = &[TokenType::Star, TokenType::Slash];
 const UNARY_OPS: &'static [TokenType] = &[TokenType::Bang, TokenType::Minus];
-const PRINT_OPS: &'static [TokenType] = &[TokenType::Print];
 
 fn peek_token(tokens: &mut Vec<Token>) -> Token {
     tokens.last()
@@ -36,6 +35,7 @@ fn consume_match(tokens: &mut Vec<Token>, family: &[TokenType]) -> bool {
 }
 
 // Keeps popping values from the stack until it is empty or the token is found
+// Returns whether or not the token was found before EoF
 fn consume_until_found(tokens: &mut Vec<Token>, family: &[TokenType]) -> bool {
     match pop_token(tokens).type_of {
         TokenType::Eof => false,
@@ -81,9 +81,11 @@ fn var_declaration(tokens: &mut Vec<Token>) -> Stmt {
 }
 
 fn statement(tokens: &mut Vec<Token>) -> Stmt {
-    let stmt = if consume_match(tokens, PRINT_OPS) {
+    let stmt = if consume_match(tokens, &[TokenType::Print]) {
         let expr = expression(tokens);
         Stmt::Print(Box::new(expr))
+    } else if consume_match(tokens, &[TokenType::LeftBrace]) {
+        Stmt::Block(block(tokens))
     } else {
         let expr = expression(tokens);
         Stmt::Expr(Box::new(expr))
@@ -93,6 +95,21 @@ fn statement(tokens: &mut Vec<Token>) -> Stmt {
         eprintln!("Did not find ';' at end of statement");
     }
     stmt
+}
+
+fn block(tokens: &mut Vec<Token>) -> Vec<Box<Stmt>> {
+    let mut statements = Vec::new();
+
+    while peek_token(tokens).type_of != TokenType::RightBrace {
+        statements.push(Box::new(declaration(tokens)));
+        if peek_token(tokens).type_of == TokenType::Eof {
+            panic!("Could not find matching '}'");
+        }
+    }
+
+    consume_until_found(tokens, &[TokenType::RightBrace]);
+    tokens.push(Token::new_keyword(TokenType::Semicolon, 0));
+    statements
 }
 
 fn expression(tokens: &mut Vec<Token>) -> Expr {

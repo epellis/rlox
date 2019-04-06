@@ -52,3 +52,10 @@ impl Environment {
         panic!("Assign: Undefined Variable!");
     }
 }
+
+//impl Drop for Environment {
+//    fn drop(&mut self) {
+//        println!("Enclosure Stack: {:#?}", self.enclosure_stack);
+//        println!("Going out of scope: {:#?}", self.values);
+//    }
+//}

@@ -14,27 +14,40 @@ pub fn interpret(statements: Vec<Stmt>) -> Result<(), &'static str> {
     Ok(())
 }
 
-fn execute(statement: Stmt, environment: &mut Environment) -> Result<(), &'static str> {
+fn execute(statement: Stmt, env: &mut Environment) -> Result<(), &'static str> {
     let expr = match &statement {
         Stmt::Expr(expr) => *expr.clone(),
         Stmt::Print(expr) => *expr.clone(),
         Stmt::Var(_, expr) => *expr.clone(),
+        Stmt::Block(_) => Expr::Empty,
     };
-    let object = evaluate(expr, environment)?;
+    let object = evaluate(expr, env)?;
     match statement {
         Stmt::Expr(_) => {},
         Stmt::Print(_) => println!("{:?}", object),
-        Stmt::Var(token, _) => environment.define(token.lexeme, object),
+        Stmt::Var(token, _) => env.define(token.lexeme, object),
+        Stmt::Block(block) => {
+            execute_block(block, env);
+            ()
+        },
     }
     Ok(())
 }
 
-fn evaluate(expression: Expr, environment: &mut Environment) -> Result<Object, &'static str> {
+fn execute_block(statements: Vec<Box<Stmt>>, parent_env: &Environment) -> Result<(), &'static str> {
+    let mut env = Environment::new_child(parent_env);
+    for statement in statements {
+        execute(*statement, &mut env)?;
+    }
+    Ok(())
+}
+
+fn evaluate(expression: Expr, env: &mut Environment) -> Result<Object, &'static str> {
     match expression {
         Expr::Literal(object) => Ok(object),
-        Expr::Grouping(expr) => evaluate(*expr, environment),
+        Expr::Grouping(expr) => evaluate(*expr, env),
         Expr::Unary(token, expr) => {
-            let right = evaluate(*expr, environment)?;
+            let right = evaluate(*expr, env)?;
             match token.type_of {
                 TokenType::Bang => unary_bang(right),
                 TokenType::Minus => unary_minus(right),
@@ -42,8 +55,8 @@ fn evaluate(expression: Expr, environment: &mut Environment) -> Result<Object, &
             }
         }
         Expr::Binary(left, token, right) => {
-            let left = evaluate(*left, environment)?;
-            let right = evaluate(*right, environment)?;
+            let left = evaluate(*left, env)?;
+            let right = evaluate(*right, env)?;
             match token.type_of {
                 TokenType::Minus => binary_arithmetic(Some(minus), None, left, right),
                 TokenType::Slash => binary_arithmetic(Some(slash), None, left, right),
@@ -58,10 +71,10 @@ fn evaluate(expression: Expr, environment: &mut Environment) -> Result<Object, &
                 _ => panic!("Could not match binary operator"),
             }
         }
-        Expr::Variable(token) => Ok(environment.get(token.lexeme)),
+        Expr::Variable(token) => Ok(env.get(token.lexeme)),
         Expr::Assign(token, expr) => {
-            let object = evaluate(*expr, environment)?;
-            environment.assign(token.lexeme, object);
+            let object = evaluate(*expr, env)?;
+            env.assign(token.lexeme, object);
             Ok(Object::None)
         }
         Expr::Empty => Ok(Object::None),
