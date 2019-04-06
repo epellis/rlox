@@ -44,6 +44,13 @@ fn consume_until_found(tokens: &mut Vec<Token>, family: &[TokenType]) -> bool {
     }
 }
 
+fn try_consume(tokens: &mut Vec<Token>, family: &[TokenType], message: &'static str) {
+    if !family.contains(&peek_token(tokens).type_of) {
+        panic!(message);
+    }
+    pop_token(tokens);
+}
+
 pub fn parse(tokens: &mut Vec<Token>) -> Vec<Stmt> {
     let mut statements = Vec::new();
     tokens.reverse();   // Treat like a stack
@@ -74,27 +81,108 @@ fn var_declaration(tokens: &mut Vec<Token>) -> Stmt {
         Expr::Empty
     };
 
-    if !consume_until_found(tokens, &[TokenType::Semicolon]) {
-        eprintln!("Did not find ';' at end of statement");
-    }
+    try_consume(tokens, &[TokenType::Semicolon], "Couldn't find ';' at end of statement");
     Stmt::Var(name, Box::new(initializer))
 }
 
 fn statement(tokens: &mut Vec<Token>) -> Stmt {
-    let stmt = if consume_match(tokens, &[TokenType::Print]) {
+    // Dispatch Print
+    if consume_match(tokens, &[TokenType::Print]) {
         let expr = expression(tokens);
-        Stmt::Print(Box::new(expr))
-    } else if consume_match(tokens, &[TokenType::LeftBrace]) {
+        let stmt = Stmt::Print(Box::new(expr));
+        try_consume(tokens, &[TokenType::Semicolon], "Couldn't find ';' at end of statement");
+        return stmt;
+    }
+
+    // Dispatch Blocked Statements
+    let stmt = if consume_match(tokens, &[TokenType::LeftBrace]) {
         Stmt::Block(block(tokens))
+    } else if consume_match(tokens, &[TokenType::If]) {
+        if_statement(tokens)
+    } else if consume_match(tokens, &[TokenType::If]) {
+        if_statement(tokens)
+    } else if consume_match(tokens, &[TokenType::While]) {
+        while_statement(tokens)
+    } else if consume_match(tokens, &[TokenType::For]) {
+        for_statement(tokens)
     } else {
         let expr = expression(tokens);
-        Stmt::Expr(Box::new(expr))
+        let stmt = Stmt::Expr(Box::new(expr));
+        try_consume(tokens, &[TokenType::Semicolon], "Couldn't find ';' at end of statement");
+        stmt
+    };
+    stmt
+}
+
+fn for_statement(tokens: &mut Vec<Token>) -> Stmt {
+    try_consume(tokens, &[TokenType::LeftParen], "Expect '(' after for");
+
+    let initializer = if consume_match(tokens, &[TokenType::Semicolon]) {
+        Stmt::Expr(Box::new(Expr::Empty))
+    } else if consume_match(tokens, &[TokenType::Var]) {
+        var_declaration(tokens)
+    } else {
+        Stmt::Expr(Box::new(expression(tokens)))
     };
 
-    if !consume_until_found(tokens, &[TokenType::Semicolon]) {
-        eprintln!("Did not find ';' at end of statement");
+
+    let condition = if peek_token(tokens).type_of == TokenType::Semicolon {
+        Expr::Literal(Object::Bool(true))
+    } else {
+        expression(tokens)
+    };
+    try_consume(tokens, &[TokenType::Semicolon], "Expect ';' after loop");
+
+    let increment = if peek_token(tokens).type_of == TokenType::RightParen {
+        Expr::Empty
+    } else {
+        expression(tokens)
+    };
+    try_consume(tokens, &[TokenType::RightParen], "Expect ')' after for");
+
+    let mut body = statement(tokens);
+
+    if increment != Expr::Empty {
+        body = Stmt::Block(vec![
+            Box::new(body),
+            Box::new(Stmt::Expr(Box::new(increment))),
+        ]);
     }
-    stmt
+
+    body = Stmt::While(Box::new(condition), Box::new(body));
+
+    if initializer != Stmt::Expr(Box::new(Expr::Empty)) {
+        body = Stmt::Block(vec![
+            Box::new(initializer),
+            Box::new(body),
+        ]);
+    }
+
+    body
+}
+
+fn while_statement(tokens: &mut Vec<Token>) -> Stmt {
+    try_consume(tokens, &[TokenType::LeftParen], "Expect '(' after while");
+    let condition = expression(tokens);
+    try_consume(tokens, &[TokenType::RightParen], "Expect ')' after while");
+    let body = statement(tokens);
+
+    Stmt::While(Box::new(condition), Box::new(body))
+}
+
+fn if_statement(tokens: &mut Vec<Token>) -> Stmt {
+    try_consume(tokens, &[TokenType::LeftParen], "Expect '(' after if");
+    let condition = expression(tokens);
+    try_consume(tokens, &[TokenType::RightParen], "Expect ')' after condition");
+
+    let then_branch = statement(tokens);
+    let else_branch = if consume_match(tokens, &[TokenType::Else]) {
+        statement(tokens)
+    } else {
+        Stmt::Expr(Box::new(Expr::Empty))
+    };
+
+    Stmt::If(Box::new(condition), Box::new(then_branch), Box::new(else_branch))
 }
 
 fn block(tokens: &mut Vec<Token>) -> Vec<Box<Stmt>> {
@@ -108,7 +196,6 @@ fn block(tokens: &mut Vec<Token>) -> Vec<Box<Stmt>> {
     }
 
     consume_until_found(tokens, &[TokenType::RightBrace]);
-    tokens.push(Token::new_keyword(TokenType::Semicolon, 0));
     statements
 }
 
@@ -117,7 +204,7 @@ fn expression(tokens: &mut Vec<Token>) -> Expr {
 }
 
 fn assignment(tokens: &mut Vec<Token>) -> Expr {
-    let expr = equality(tokens);
+    let expr = or(tokens);
     let mut token = peek_token(tokens);
 
     if consume_match(tokens, &[TokenType::Equal]) {
@@ -126,12 +213,39 @@ fn assignment(tokens: &mut Vec<Token>) -> Expr {
         // TODO: The left always needs to be an l-value. If the left is an
         //  r-value, then it needs to be converted for assignment to work.
 
-        if let Expr::Variable(token) = &value {
+        if let Expr::Variable(token) = &expr {
             return Expr::Assign(token.clone(), Box::new(value.clone()));
         } else {
             panic!("Invalid assignment target");
         }
     }
+
+    expr
+}
+
+fn or(tokens: &mut Vec<Token>) -> Expr {
+    let mut expr = and(tokens);
+    let mut token = peek_token(tokens);
+
+    while consume_match(tokens, &[TokenType::Or]) {
+        let right = and(tokens);
+        expr = Expr::Logical(Box::new(expr.clone()), token.clone(), Box::new(right.clone()));
+        token = peek_token(tokens);
+    }
+
+    expr
+}
+
+fn and(tokens: &mut Vec<Token>) -> Expr {
+    let mut expr = equality(tokens);
+    let mut token = peek_token(tokens);
+
+    while consume_match(tokens, &[TokenType::And]) {
+        let right = equality(tokens);
+        expr = Expr::Logical(Box::new(expr.clone()), token.clone(), Box::new(right.clone()));
+        token = peek_token(tokens);
+    }
+
     expr
 }
 

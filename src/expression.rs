@@ -1,10 +1,11 @@
 use crate::token::{Token, Object};
 
-#[derive(Clone)]
+#[derive(Clone, PartialOrd, PartialEq)]
 pub enum Expr {
     Assign(Token, Box<Expr>),
     Binary(Box<Expr>, Token, Box<Expr>),
     Literal(Object),
+    Logical(Box<Expr>, Token, Box<Expr>),
     Unary(Token, Box<Expr>),
     Variable(Token),
     Grouping(Box<Expr>),
@@ -21,6 +22,9 @@ impl std::fmt::Debug for Expr {
                 write!(f, "({:?} {:?} {:?})", token, left, right)
             },
             Expr::Literal(object) => write!(f, "{:?}", object),
+            Expr::Logical(left, operator, right) => {
+                write!(f, "({:?} {:?}, {:?})", operator, left, right)
+            }
             Expr::Unary(token, expr) => write!(f, "({:?} {:?})", token, expr),
             Expr::Variable(token) => write!(f, "{:?}", token),
             Expr::Grouping(expr) => write!(f, "({:?})", expr),

@@ -20,7 +20,7 @@ pub fn run_prompt() {
         let mut line = String::new();
         io::stdin().read_line(&mut line).expect("Couldn't Read");
 
-        if let Err(why) = run(&line) {
+        if let Err(why) = run(&line, true) {
             report(0, &line, why);
         }
 
@@ -33,12 +33,12 @@ pub fn run_file(path: &str) {
     let contents = fs::read_to_string(path)
         .expect("Couldn't open file!");
 
-    if let Err(why) = run(&contents) {
+    if let Err(why) = run(&contents, false) {
         report(0, &line, why);
     }
 }
 
-fn run(source: &str) -> Result<(), &'static str> {
+fn run(source: &str, is_repl: bool) -> Result<(), &'static str> {
     let scanner = scanner::Scanner::new(source.trim());
     let mut tokens = scanner.scan_tokens();
     println!("Scanned Tokens: {:?}", tokens.clone());
@@ -46,7 +46,7 @@ fn run(source: &str) -> Result<(), &'static str> {
     let expressions = parser::parse(&mut tokens);
     println!("Parsed Expression: {:?}", expressions.clone());
 
-    interpreter::interpret(expressions)
+    interpreter::interpret(expressions, is_repl)
 }
 
 // TODO: Make into a macro?

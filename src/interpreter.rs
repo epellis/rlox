@@ -4,31 +4,48 @@ use crate::statement::Stmt;
 use crate::token::token_type::TokenType;
 use crate::environment::Environment;
 
-pub fn interpret(statements: Vec<Stmt>) -> Result<(), &'static str> {
+pub fn interpret(statements: Vec<Stmt>, is_repl: bool) -> Result<(), &'static str> {
     let mut environment = Environment::new_root();
     for statement in statements {
-        if let Err(why) = execute(statement, &mut environment) {
+        if let Err(why) = execute(statement, &mut environment, is_repl) {
             return Err(why);
         }
     }
     Ok(())
 }
 
-fn execute(statement: Stmt, env: &mut Environment) -> Result<(), &'static str> {
+fn execute(statement: Stmt, env: &mut Environment, is_repl: bool) -> Result<(), &'static str> {
     let expr = match &statement {
         Stmt::Expr(expr) => *expr.clone(),
         Stmt::Print(expr) => *expr.clone(),
         Stmt::Var(_, expr) => *expr.clone(),
         Stmt::Block(_) => Expr::Empty,
+        Stmt::If(expr, _, _) => *expr.clone(),
+        Stmt::While(expr, _) => *expr.clone(),
     };
     let object = evaluate(expr, env)?;
+//    let object = evaluate(expr.clone(), env)?;
+//    println!("{:?} -> {:?}", expr, object);
+
     match statement {
+        Stmt::Expr(_) if is_repl => println!("{:?}", object),
         Stmt::Expr(_) => {},
         Stmt::Print(_) => println!("{:?}", object),
         Stmt::Var(token, _) => env.define(token.lexeme, object),
         Stmt::Block(block) => {
             execute_block(block, env);
-            ()
+        },
+        Stmt::If(_, then_branch, else_branch) => {
+            match object {
+                Object::Bool(true) => execute(*then_branch, env, false)?,
+                Object::Bool(false) => execute(*else_branch, env, false)?,
+                _ => panic!("Conditional did not evaluate to true or false"),
+            };
+        },
+        Stmt::While(expr, body) => {
+            while truthiness(&evaluate(*expr.clone(), env)?) {
+                execute(*body.clone(), env, false)?;
+            }
         },
     }
     Ok(())
@@ -37,7 +54,7 @@ fn execute(statement: Stmt, env: &mut Environment) -> Result<(), &'static str> {
 fn execute_block(statements: Vec<Box<Stmt>>, parent_env: &Environment) -> Result<(), &'static str> {
     let mut env = Environment::new_child(parent_env);
     for statement in statements {
-        execute(*statement, &mut env)?;
+        execute(*statement, &mut env, false)?;
     }
     Ok(())
 }
@@ -54,6 +71,21 @@ fn evaluate(expression: Expr, env: &mut Environment) -> Result<Object, &'static 
                 _ => panic!("Could not match unary operator"),
             }
         }
+        Expr::Logical(left, token, right) => {
+            let left = evaluate(*left, env)?;
+
+            let truth = truthiness(&left);
+
+            let object = match token.type_of {
+                TokenType::Or if truth => left,
+                TokenType::Or if !truth => evaluate(*right, env)?,
+                TokenType::And if !truth => left,
+                TokenType::And if truth => evaluate(*right, env)?,
+                _ => panic!("Conditional did not evaluate to true or false"),
+            };
+            Ok(object)
+        }
+
         Expr::Binary(left, token, right) => {
             let left = evaluate(*left, env)?;
             let right = evaluate(*right, env)?;
@@ -152,7 +184,13 @@ fn binary_equal_equal(left: Object, right: Object) -> Result<Object, &'static st
 fn binary_bang_equal(left: Object, right: Object) -> Result<Object, &'static str> {
     match binary_equal_equal(left, right)? {
         Object::Bool(result) => Ok(Object::Bool(!result)),
-//        Err(why) => Err(why),
         _ => Ok(Object::None),
+    }
+}
+
+fn truthiness(object: &Object) -> bool {
+    match object {
+        Object::Bool(truthiness) => *truthiness,
+        _ => panic!("Object was not true or false"),
     }
 }

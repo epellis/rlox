@@ -35,6 +35,9 @@ impl Environment {
         for enclosure in self.enclosure_stack.iter().rev() {
             let enclosure = enclosure.borrow();
             if let Some(object) = enclosure.get(&name) {
+                if *object == Object::None {
+                    panic!("Variable is nil");
+                }
                 return object.clone();
             }
         }
