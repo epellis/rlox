@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-type Enclosure = Rc<RefCell<HashMap<String, Object>>>;
+pub type Enclosure = Rc<RefCell<HashMap<String, Object>>>;
 
 #[derive(Debug, Clone)]
 pub struct Environment {
@@ -54,6 +54,10 @@ impl Environment {
         }
         panic!("Assign: Undefined Variable!");
     }
+
+//    pub fn globals(&self) -> Option<Enclosure> {
+//        *self.enclosure_stack.first()?.clone()
+//    }
 }
 
 //impl Drop for Environment {

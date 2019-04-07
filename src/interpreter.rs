@@ -14,7 +14,7 @@ pub fn interpret(statements: Vec<Stmt>, is_repl: bool) -> Result<(), &'static st
     Ok(())
 }
 
-fn execute(statement: Stmt, env: &mut Environment, is_repl: bool) -> Result<(), &'static str> {
+fn execute(statement: Stmt, env: &mut Environment, is_repl: bool) -> Result<Object, &'static str> {
     let expr = match &statement {
         Stmt::Expr(expr) => *expr.clone(),
         Stmt::Print(expr) => *expr.clone(),
@@ -22,10 +22,11 @@ fn execute(statement: Stmt, env: &mut Environment, is_repl: bool) -> Result<(), 
         Stmt::Block(_) => Expr::Empty,
         Stmt::If(expr, _, _) => *expr.clone(),
         Stmt::While(expr, _) => *expr.clone(),
+        Stmt::Function(_, _, _) => Expr::Empty,
+        Stmt::Break => Expr::Empty,
+        Stmt::Return(_, expr) => *expr.clone(),
     };
     let object = evaluate(expr, env)?;
-//    let object = evaluate(expr.clone(), env)?;
-//    println!("{:?} -> {:?}", expr, object);
 
     match statement {
         Stmt::Expr(_) if is_repl => println!("{:?}", object),
@@ -33,30 +34,46 @@ fn execute(statement: Stmt, env: &mut Environment, is_repl: bool) -> Result<(), 
         Stmt::Print(_) => println!("{:?}", object),
         Stmt::Var(token, _) => env.define(token.lexeme, object),
         Stmt::Block(block) => {
-            execute_block(block, env);
+            return execute_block(block, env);
         },
         Stmt::If(_, then_branch, else_branch) => {
             match object {
                 Object::Bool(true) => execute(*then_branch, env, false)?,
                 Object::Bool(false) => execute(*else_branch, env, false)?,
+//                _ => return Err("Conditional did not evaluate to true or false"),
                 _ => panic!("Conditional did not evaluate to true or false"),
             };
         },
         Stmt::While(expr, body) => {
             while truthiness(&evaluate(*expr.clone(), env)?) {
                 execute(*body.clone(), env, false)?;
+                if should_exit(&*body) {
+                    break;
+                }
             }
         },
+        Stmt::Function(name, parameters, body) => {
+            let func_object = Object::Function(parameters, body);
+            env.define(name.lexeme, func_object);
+        }
+        Stmt::Break => {},
+        Stmt::Return(_, _) => return Ok(object),
     }
-    Ok(())
+    Ok((Object::Nil))
 }
 
-fn execute_block(statements: Vec<Box<Stmt>>, parent_env: &Environment) -> Result<(), &'static str> {
+fn execute_block(statements: Vec<Box<Stmt>>, parent_env: &Environment) -> Result<Object, &'static str> {
     let mut env = Environment::new_child(parent_env);
     for statement in statements {
-        execute(*statement, &mut env, false)?;
+        if let Stmt::Break = *statement {
+            break;
+        }
+        let result = execute(*statement, &mut env, false)?;
+        if result != Object::Nil {
+            return Ok(result);
+        }
     }
-    Ok(())
+    Ok(Object::Nil)
 }
 
 fn evaluate(expression: Expr, env: &mut Environment) -> Result<Object, &'static str> {
@@ -68,7 +85,7 @@ fn evaluate(expression: Expr, env: &mut Environment) -> Result<Object, &'static 
             match token.type_of {
                 TokenType::Bang => unary_bang(right),
                 TokenType::Minus => unary_minus(right),
-                _ => panic!("Could not match unary operator"),
+                _ => return Err("Could not match unary operator"),
             }
         }
         Expr::Logical(left, token, right) => {
@@ -81,7 +98,7 @@ fn evaluate(expression: Expr, env: &mut Environment) -> Result<Object, &'static 
                 TokenType::Or if !truth => evaluate(*right, env)?,
                 TokenType::And if !truth => left,
                 TokenType::And if truth => evaluate(*right, env)?,
-                _ => panic!("Conditional did not evaluate to true or false"),
+                _ => return Err("Conditional did not evaluate to true or false"),
             };
             Ok(object)
         }
@@ -100,7 +117,7 @@ fn evaluate(expression: Expr, env: &mut Environment) -> Result<Object, &'static 
                 TokenType::LessEqual => binary_compare(less_equal, shorter_equal, left, right),
                 TokenType::EqualEqual => binary_equal_equal(left, right),
                 TokenType::BangEqual => binary_bang_equal(left, right),
-                _ => panic!("Could not match binary operator"),
+                _ => return Err("Could not match binary operator"),
             }
         }
         Expr::Variable(token) => Ok(env.get(token.lexeme)),
@@ -109,7 +126,27 @@ fn evaluate(expression: Expr, env: &mut Environment) -> Result<Object, &'static 
             env.assign(token.lexeme, object);
             Ok(Object::None)
         }
-        Expr::Empty => Ok(Object::None),
+        Expr::Call(callee, token, arguments) => {
+            let callee = evaluate(*callee, env)?;
+            if let Object::Function(parameters, function_block) = callee {
+                let arguments: Vec<Object> = arguments.iter()
+                    .map(|argument| evaluate(*argument.clone(), env))
+                    .map(|result| result.unwrap())
+                    .collect();
+                if parameters.len() != arguments.len() {
+                    return Err("Arguments do not match Parameter arity");
+                }
+
+                let mut function_env = bind_parameters(parameters, arguments);
+                let function_block = Stmt::Block(function_block);
+                let result = execute(function_block, &mut function_env, false)?;
+                return Ok(result);
+            } else {
+                panic!("Couldn't map callee to function");
+            }
+            Ok(Object::Nil)
+        }
+        Expr::Empty => Ok(Object::Nil),
     }
 }
 
@@ -193,4 +230,26 @@ fn truthiness(object: &Object) -> bool {
         Object::Bool(truthiness) => *truthiness,
         _ => panic!("Object was not true or false"),
     }
+}
+
+fn should_exit(statement: &Stmt) -> bool {
+    if let Stmt::Block(statements) = statement {
+        for statement in statements {
+            if **statement == Stmt::Break {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+fn bind_parameters(parameters: Vec<Token>, arguments: Vec<Object>) -> Environment {
+    // TODO: Add global variables to environment
+    let env = Environment::new_root();
+
+    for (parameter, argument) in parameters.iter().zip(arguments.iter()) {
+        env.define(parameter.lexeme.clone(), argument.clone());
+    }
+
+    env
 }

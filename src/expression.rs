@@ -4,6 +4,7 @@ use crate::token::{Token, Object};
 pub enum Expr {
     Assign(Token, Box<Expr>),
     Binary(Box<Expr>, Token, Box<Expr>),
+    Call(Box<Expr>, Token, Vec<Box<Expr>>),
     Literal(Object),
     Logical(Box<Expr>, Token, Box<Expr>),
     Unary(Token, Box<Expr>),
@@ -29,6 +30,9 @@ impl std::fmt::Debug for Expr {
             Expr::Variable(token) => write!(f, "{:?}", token),
             Expr::Grouping(expr) => write!(f, "({:?})", expr),
             Expr::Empty => write!(f, "()"),
+            Expr::Call(callee, _, arguments) => {
+                write!(f, "({:?} {:?})", callee, arguments)
+            }
         }
     }
 }

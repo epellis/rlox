@@ -18,7 +18,6 @@ impl Scanner {
     pub fn scan_tokens(&self) -> Vec<Token> {
         let mut tokens = Vec::new();
         let mut line: u32 = 1;
-//        let mut scan_error = false;
 
         let mut source: Vec<char> = self.source.chars().collect();
         source.reverse();
@@ -212,6 +211,7 @@ lazy_static! {
     static ref KEYWORDS: HashMap<String, TokenType> = {
         let mut m = HashMap::new();
         m.insert("and".to_string(), TokenType::And);
+        m.insert("break".to_string(), TokenType::Break);
         m.insert("class".to_string(), TokenType::Class);
         m.insert("else".to_string(), TokenType::Else);
         m.insert("for".to_string(), TokenType::For);

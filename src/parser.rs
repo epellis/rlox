@@ -61,12 +61,41 @@ pub fn parse(tokens: &mut Vec<Token>) -> Vec<Stmt> {
 }
 
 fn declaration(tokens: &mut Vec<Token>) -> Stmt {
-    if consume_match(tokens, &[TokenType::Var]) {
+    if consume_match(tokens, &[TokenType::Fun]) {
+        function(tokens, "function")
+    } else if consume_match(tokens, &[TokenType::Var]) {
         var_declaration(tokens)
     } else {
         statement(tokens)
     }
     // TODO: Synchronize
+}
+
+fn function(tokens: &mut Vec<Token>, kind: &'static str) -> Stmt {
+    let name = peek_token(tokens);
+    try_consume(tokens, &[TokenType::Identifier], "Expected Identifier");
+    try_consume(tokens, &[TokenType::LeftParen], "Expected LeftParen");
+
+    let mut parameters = Vec::new();
+
+    if peek_token(tokens).type_of != TokenType::RightParen {
+        loop {
+            let parameter = peek_token(tokens);
+            if !consume_match(tokens, &[TokenType::Identifier]) {
+                break;
+            }
+            parameters.push(parameter);
+            if !consume_match(tokens, &[TokenType::Comma]) {
+                break;
+            }
+        }
+    }
+    try_consume(tokens, &[TokenType::RightParen], "Expected RightParen");
+    try_consume(tokens, &[TokenType::LeftBrace], "Expected LeftBrace");
+
+    let body = block(tokens);
+
+    Stmt::Function(name, parameters, body)
 }
 
 fn var_declaration(tokens: &mut Vec<Token>) -> Stmt {
@@ -105,6 +134,11 @@ fn statement(tokens: &mut Vec<Token>) -> Stmt {
         while_statement(tokens)
     } else if consume_match(tokens, &[TokenType::For]) {
         for_statement(tokens)
+    } else if consume_match(tokens, &[TokenType::Return]) {
+        return_statement(tokens)
+    } else if consume_match(tokens, &[TokenType::Break]) {
+        try_consume(tokens, &[TokenType::Semicolon], "Couldn't find ';' at end of statement");
+        Stmt::Break
     } else {
         let expr = expression(tokens);
         let stmt = Stmt::Expr(Box::new(expr));
@@ -112,6 +146,17 @@ fn statement(tokens: &mut Vec<Token>) -> Stmt {
         stmt
     };
     stmt
+}
+
+fn return_statement(tokens: &mut Vec<Token>) -> Stmt {
+    let keyword = Token::new_keyword(TokenType::Return, 1);
+    let mut value = Expr::Empty;
+    if peek_token(tokens).type_of != TokenType::Semicolon {
+        value = expression(tokens);
+    }
+
+    try_consume(tokens, &[TokenType::Semicolon], "Expect ';' after return");
+    Stmt::Return(keyword, Box::new(value))
 }
 
 fn for_statement(tokens: &mut Vec<Token>) -> Stmt {
@@ -190,12 +235,14 @@ fn block(tokens: &mut Vec<Token>) -> Vec<Box<Stmt>> {
 
     while peek_token(tokens).type_of != TokenType::RightBrace {
         statements.push(Box::new(declaration(tokens)));
+
         if peek_token(tokens).type_of == TokenType::Eof {
             panic!("Could not find matching '}'");
         }
     }
 
     consume_until_found(tokens, &[TokenType::RightBrace]);
+
     statements
 }
 
@@ -205,7 +252,7 @@ fn expression(tokens: &mut Vec<Token>) -> Expr {
 
 fn assignment(tokens: &mut Vec<Token>) -> Expr {
     let expr = or(tokens);
-    let mut token = peek_token(tokens);
+    let token = peek_token(tokens);
 
     if consume_match(tokens, &[TokenType::Equal]) {
         let value = assignment(tokens);
@@ -307,8 +354,42 @@ fn unary(tokens: &mut Vec<Token>) -> Expr {
     if consume_match(tokens, UNARY_OPS) {
         Expr::Unary(token.clone(), Box::new(expression(tokens)))
     } else {
-        primary(tokens)
+        call(tokens)
     }
+}
+
+fn call(tokens: &mut Vec<Token>) -> Expr {
+    let mut expr = primary(tokens);
+
+    loop {
+        if consume_match(tokens, &[TokenType::LeftParen]) {
+            expr = finish_call(tokens, expr.clone());
+        } else {
+            break;
+        }
+    }
+
+    expr
+}
+
+fn finish_call(tokens: &mut Vec<Token>, callee: Expr) -> Expr {
+    let mut arguments = Vec::new();
+    if peek_token(tokens).type_of != TokenType::RightParen {
+        loop {
+            arguments.push(Box::new(expression(tokens)));
+            if !consume_match(tokens, &[TokenType::Comma]) {
+                break;
+            }
+        }
+    }
+
+    if arguments.len() >= 8 {
+        panic!("Cannot have more than 8 arguments per function");
+    }
+
+    let token = peek_token(tokens);
+    try_consume(tokens, &[TokenType::RightParen], "Expect ')' after arguments");
+    Expr::Call(Box::new(callee), token, arguments)
 }
 
 fn primary(tokens: &mut Vec<Token>) -> Expr {
