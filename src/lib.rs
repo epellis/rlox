@@ -5,6 +5,7 @@ mod statement;
 mod parser;
 mod interpreter;
 mod environment;
+mod resolver;
 
 use std::io;
 use std::io::Write;

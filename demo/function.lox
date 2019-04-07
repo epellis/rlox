@@ -1,9 +1,9 @@
-fun multiply(a, b) {
+fun mult(a, b) {
     if (b <= 1) {
         return a;
     } else {
-        return a + multiply(a, b - 1);
+        return a + mult(a, b-1);
     }
 }
 
-print multiply(1, 2);
+print mult(2, 100);

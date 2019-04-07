@@ -1,6 +1,7 @@
 pub mod token_type;
 
 use crate::statement::Stmt;
+use crate::environment::Environment;
 
 #[derive(PartialOrd, PartialEq, Clone)]
 pub struct Token {
@@ -16,7 +17,7 @@ pub enum Object {
     String(String),
     Number(f64),
     Bool(bool),
-    Function(Vec<Token>, Vec<Box<Stmt>>),
+    Function(Vec<Token>, Vec<Box<Stmt>>, Environment),
     Nil,
 }
 
@@ -65,9 +66,9 @@ impl std::fmt::Debug for Token {
             Object::Bool(true) => write!(f, "true"),
             Object::Bool(false) => write!(f, "false"),
             Object::Nil => write!(f, "nil"),
-            Object::Function(parameters, block) => {
-                write!(f, "Function: {:?} {:?}", parameters, block)
-            }
+            Object::Function(parameters, block, closure) => {
+                write!(f, "Function: {:?} {:?} {:?}", parameters, block, closure)
+            },
         }
     }
 }
@@ -81,9 +82,9 @@ impl std::fmt::Debug for Object {
             Object::Bool(true) => write!(f, "true"),
             Object::Bool(false) => write!(f, "false"),
             Object::Nil => write!(f, "nil"),
-            Object::Function(parameters, block) => {
-                write!(f, "Function: {:?} {:?}", parameters, block)
-            }
+            Object::Function(parameters, block, closure) => {
+                write!(f, "Function: {:?} {:?} {:?}", parameters, block, closure)
+            },
         }
     }
 }
