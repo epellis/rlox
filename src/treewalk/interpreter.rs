@@ -1,8 +1,8 @@
-use crate::token::{Token, Object};
-use crate::expression::Expr;
-use crate::statement::Stmt;
-use crate::token::token_type::TokenType;
-use crate::environment::Environment;
+use crate::treewalk::token::{Token, Object};
+use crate::treewalk::expression::Expr;
+use crate::treewalk::statement::Stmt;
+use crate::treewalk::token::token_type::TokenType;
+use crate::treewalk::environment::Environment;
 
 pub fn interpret(statements: Vec<Stmt>, is_repl: bool) -> Result<(), &'static str> {
     let mut environment = Environment::new_root();
@@ -135,7 +135,7 @@ fn evaluate(expression: Expr, env: &mut Environment) -> Result<Object, &'static 
             env.assign(token.lexeme, object);
             Ok(Object::None)
         }
-        Expr::Call(callee, token, arguments) => {
+        Expr::Call(callee, _, arguments) => {
             let callee = evaluate(*callee, env)?;
             if let Object::Function(parameters, function_block, closure) = callee {
                 let arguments: Vec<Object> = arguments.iter()
@@ -153,7 +153,6 @@ fn evaluate(expression: Expr, env: &mut Environment) -> Result<Object, &'static 
             } else {
                 panic!("Couldn't map callee to function");
             }
-            Ok(Object::Nil)
         }
         Expr::Empty => Ok(Object::Nil),
     }

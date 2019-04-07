@@ -1,4 +1,4 @@
-use crate::token::{Token, Object};
+use crate::treewalk::token::{Token, Object};
 
 #[derive(Clone, PartialOrd, PartialEq)]
 pub enum Expr {

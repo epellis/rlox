@@ -1,9 +1,8 @@
-use crate::token::{Token, token_type::TokenType};
+use crate::treewalk::token::{Token, token_type::TokenType};
 use std::collections::HashMap;
 
 pub struct Scanner {
     source: String,
-    tokens: Vec<Token>,
 }
 
 use lazy_static;
@@ -11,8 +10,7 @@ use lazy_static;
 impl Scanner {
     pub fn new(source: &str) -> Scanner {
         let source = source.to_string();
-        let tokens = Vec::new();
-        Scanner { source, tokens }
+        Scanner { source }
     }
 
     pub fn scan_tokens(&self) -> Vec<Token> {

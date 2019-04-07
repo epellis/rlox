@@ -1,8 +1,7 @@
-use crate::token::{Token, Object};
-use crate::expression::Expr;
-use crate::token::token_type::TokenType;
-use crate::statement::Stmt;
-use crate::token::token_type::TokenType::{EqualEqual, Identifier};
+use crate::treewalk::token::{Token, Object};
+use crate::treewalk::expression::Expr;
+use crate::treewalk::token::token_type::TokenType;
+use crate::treewalk::statement::Stmt;
 
 const EQUALITY_OPS: &'static [TokenType] = &[TokenType::BangEqual, TokenType::EqualEqual];
 const COMPARISON_OPS: &'static [TokenType] = &[TokenType::Less, TokenType::LessEqual, TokenType::Greater, TokenType::GreaterEqual];
@@ -71,7 +70,7 @@ fn declaration(tokens: &mut Vec<Token>) -> Stmt {
     // TODO: Synchronize
 }
 
-fn function(tokens: &mut Vec<Token>, kind: &'static str) -> Stmt {
+fn function(tokens: &mut Vec<Token>, _kind: &'static str) -> Stmt {
     let name = peek_token(tokens);
     try_consume(tokens, &[TokenType::Identifier], "Expected Identifier");
     try_consume(tokens, &[TokenType::LeftParen], "Expected LeftParen");
@@ -252,7 +251,6 @@ fn expression(tokens: &mut Vec<Token>) -> Expr {
 
 fn assignment(tokens: &mut Vec<Token>) -> Expr {
     let expr = or(tokens);
-    let token = peek_token(tokens);
 
     if consume_match(tokens, &[TokenType::Equal]) {
         let value = assignment(tokens);

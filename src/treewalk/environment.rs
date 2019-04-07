@@ -1,4 +1,4 @@
-use crate::token::Object;
+use crate::treewalk::token::Object;
 use std::collections::HashMap;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -77,13 +77,13 @@ impl Drop for Environment {
 }
 
 impl PartialOrd for Environment {
-    fn partial_cmp(&self, other: &Environment) -> Option<Ordering> {
+    fn partial_cmp(&self, _other: &Environment) -> Option<Ordering> {
         Some(Ordering::Less)
     }
 }
 
 impl PartialEq for Environment {
-    fn eq(&self, other: &Environment) -> bool {
+    fn eq(&self, _other: &Environment) -> bool {
         false
     }
 }

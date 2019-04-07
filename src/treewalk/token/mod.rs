@@ -1,7 +1,7 @@
 pub mod token_type;
 
-use crate::statement::Stmt;
-use crate::environment::Environment;
+use crate::treewalk::statement::Stmt;
+use crate::treewalk::environment::Environment;
 
 #[derive(PartialOrd, PartialEq, Clone)]
 pub struct Token {
